@@ -207,6 +207,8 @@ document.querySelectorAll("[data-gripper-arm]").forEach((button) => {
   });
 });
 
-refresh();
-setInterval(refresh, 2000);
+document.addEventListener("DOMContentLoaded", () => {
+  refresh();
+  setInterval(refresh, 2000);
+});
 
