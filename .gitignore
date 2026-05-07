@@ -1,0 +1,15 @@
+# Python build artifacts
+*.egg-info/
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
