@@ -6,7 +6,8 @@ const state = {
   jointOrder: [],
 };
 
-const controls = document.getElementById("jointControls");
+let motionDuration = 1.0;
+
 let message = null;
 let torqueToggle = null;
 
@@ -92,7 +93,7 @@ function renderArmControl(containerId, jointNames) {
         row.querySelector("[data-role='target']").textContent = format(slider.value, isGripper(joint) ? 2 : 1);
       });
       slider.addEventListener("change", async () => {
-        await sendJoint(joint, Number(slider.value));
+        await sendJoint(joint, Number(slider.value), motionDuration);
       });
 
       const target = metric("目标", format(slider.value, isGripper(joint) ? 2 : 1), "target");
@@ -161,10 +162,10 @@ async function refresh() {
   }
 }
 
-async function sendJoint(joint, value) {
+async function sendJoint(joint, value, duration = 1.0) {
   try {
-    render(await post("/api/joint", { joint, value }));
-    setMessage(`${joint} 已发送`);
+    render(await post("/api/joint", { joint, value, duration }));
+    setMessage(`${joint} → ${value} (${duration}s)`);
   } catch (error) {
     setMessage(error.message, true);
   }
@@ -173,6 +174,11 @@ async function sendJoint(joint, value) {
 document.addEventListener("DOMContentLoaded", () => {
   message = document.getElementById("message");
   torqueToggle = document.getElementById("torqueToggle");
+
+  const durationInput = document.getElementById("durationInput");
+  durationInput.addEventListener("change", () => {
+    motionDuration = Math.min(Math.max(parseFloat(durationInput.value) || 1.0, 0.1), 60);
+  });
 
   document.getElementById("connectBtn").addEventListener("click", async () => {
     try {

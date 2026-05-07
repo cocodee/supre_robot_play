@@ -50,6 +50,25 @@ class HttpApiTest(unittest.TestCase):
         self.assertIn("arm-card-right", body)
 
 
+def test_joint_api_with_duration(self):
+    self.client.post("/api/connect", json={})
+    response = self.client.post(
+        "/api/joint",
+        json={"joint": "left_arm_joint_2", "value": -15.0, "duration": 0.1},
+    )
+    self.assertEqual(response.status_code, 200)
+    self.assertAlmostEqual(response.json()["positions"]["left_arm_joint_2"], -15.0, places=1)
+
+def test_joint_api_duration_default(self):
+    self.client.post("/api/connect", json={})
+    response = self.client.post(
+        "/api/joint",
+        json={"joint": "right_arm_joint_1", "value": 10.0},
+    )
+    self.assertEqual(response.status_code, 200)
+    self.assertAlmostEqual(response.json()["positions"]["right_arm_joint_1"], 10.0, places=1)
+
+
 if __name__ == "__main__":
     unittest.main()
 

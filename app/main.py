@@ -18,6 +18,7 @@ STATIC_DIR = ROOT / "static"
 class JointCommand(BaseModel):
     joint: str = Field(min_length=1)
     value: float
+    duration: float = 1.0
 
 
 class JointsCommand(BaseModel):
@@ -66,7 +67,7 @@ def create_app(service: RobotService | None = None) -> FastAPI:
 
     @app.post("/api/joint")
     def set_joint(command: JointCommand) -> dict[str, object]:
-        return robot().set_joint(command.joint, command.value)
+        return robot().set_joint(command.joint, command.value, command.duration)
 
     @app.post("/api/joints")
     def set_joints(command: JointsCommand) -> dict[str, object]:

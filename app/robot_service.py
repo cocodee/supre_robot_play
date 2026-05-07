@@ -57,6 +57,9 @@ class RobotBackend(Protocol):
     def move_joints(self, targets: dict[str, float]) -> None:
         ...
 
+    def execute_joint_trajectory(self, joint_name: str, target: float, duration: float) -> None:
+        ...
+
     def set_enable_torque(self, enable: bool) -> None:
         ...
 
@@ -130,6 +133,20 @@ class SimulatedRobot:
     def close_gripper(self, arm: str) -> None:
         self.move_joint(gripper_joint_name(arm), 0.0)
 
+    def execute_joint_trajectory(self, joint_name: str, target: float, duration: float) -> None:
+        self._require_connected()
+        clamped = clamp_joint_value(joint_name, target)
+        if clamped == self._positions.get(joint_name):
+            return
+        start = self._positions[joint_name]
+        steps = max(3, int(30 * duration))  # fixed 30Hz
+        for i in range(1, steps + 1):
+            alpha = i / steps
+            self._positions[joint_name] = start + alpha * (clamped - start)
+            self._forces[joint_name] = min(abs(self._positions[joint_name]) / 180.0, 1.0)
+            time.sleep(duration / steps)
+        self._positions[joint_name] = clamped
+
     def _require_connected(self) -> None:
         if not self._connected:
             raise RobotServiceError("Robot is not connected.", status=409)
@@ -179,6 +196,10 @@ class SdkRobotBackend:
 
     def move_joints(self, targets: dict[str, float]) -> None:
         self._robot.move_joints({name: clamp_joint_value(name, value) for name, value in targets.items()})
+
+    def execute_joint_trajectory(self, joint_name: str, target: float, duration: float) -> None:
+        clamped = clamp_joint_value(joint_name, target)
+        self._robot.execute_trajectory({joint_name: clamped}, duration=duration)
 
     def set_enable_torque(self, enable: bool) -> None:
         self._robot.set_enable_torque(enable)
@@ -233,8 +254,10 @@ class RobotService:
             base["forces"] = self._backend.get_joint_forces()
             return base
 
-    def set_joint(self, joint: str, value: float) -> dict[str, object]:
-        return self._call(lambda: self._backend.move_joint(joint, value))
+    def set_joint(self, joint: str, value: float, duration: float = 1.0) -> dict[str, object]:
+        if duration <= 0:
+            return self._call(lambda: self._backend.move_joint(joint, value))
+        return self._call(lambda: self._backend.execute_joint_trajectory(joint, value, duration))
 
     def set_joints(self, targets: dict[str, float]) -> dict[str, object]:
         return self._call(lambda: self._backend.move_joints(targets))

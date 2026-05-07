@@ -48,6 +48,24 @@ class RobotServiceTest(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status, 404)
 
+    def test_simulated_robot_execute_joint_trajectory_sets_positions(self):
+        service = RobotService(SimulatedRobot())
+        service.connect()
+        data = service.set_joint("left_arm_joint_1", 45.0, duration=0.1)
+        self.assertAlmostEqual(data["positions"]["left_arm_joint_1"], 45.0, places=1)
+
+    def test_set_joint_with_duration_calls_execute_trajectory(self):
+        service = RobotService(SimulatedRobot())
+        service.connect()
+        data = service.set_joint("right_arm_joint_3", -30.0, duration=0.2)
+        self.assertAlmostEqual(data["positions"]["right_arm_joint_3"], -30.0, places=1)
+
+    def test_set_joint_zero_duration_is_instant(self):
+        service = RobotService(SimulatedRobot())
+        service.connect()
+        data = service.set_joint("left_arm_joint_1", 90.0, duration=0)
+        self.assertEqual(data["positions"]["left_arm_joint_1"], 90.0)
+
 
 if __name__ == "__main__":
     unittest.main()
