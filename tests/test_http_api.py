@@ -1,0 +1,55 @@
+import unittest
+
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+from app.robot_service import RobotService, SimulatedRobot
+
+
+class HttpApiTest(unittest.TestCase):
+    def setUp(self):
+        service = RobotService(SimulatedRobot())
+        self.client = TestClient(create_app(service))
+
+    def test_health(self):
+        response = self.client.get("/api/health")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["mode"], "sim")
+
+    def test_connect_and_joint_api(self):
+        connect_response = self.client.post("/api/connect", json={})
+        joint_response = self.client.post(
+            "/api/joint",
+            json={"joint": "right_arm_joint_2", "value": -12.5},
+        )
+
+        self.assertEqual(connect_response.status_code, 200)
+        self.assertTrue(connect_response.json()["connected"])
+        self.assertEqual(joint_response.status_code, 200)
+        self.assertEqual(joint_response.json()["positions"]["right_arm_joint_2"], -12.5)
+
+    def test_unknown_joint_returns_404(self):
+        self.client.post("/api/connect", json={})
+        response = self.client.post("/api/joint", json={"joint": "missing", "value": 1})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Unknown joint", response.json()["error"])
+
+    def test_index_page_is_served(self):
+        response = self.client.get("/")
+        body = response.text
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Supre Robot Play", body)
+        self.assertIn("leftArmControls", body)
+        self.assertIn("rightArmControls", body)
+        self.assertIn("arm-card-left", body)
+        self.assertIn("arm-card-right", body)
+
+
+if __name__ == "__main__":
+    unittest.main()
+

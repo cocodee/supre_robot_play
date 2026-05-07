@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Supre Robot Play</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-wordmark">Supre Robot Play</div>
+      <div class="actions">
+        <button id="connectBtn" class="btn-primary">连接</button>
+        <button id="disconnectBtn" class="btn-secondary">断开</button>
+        <button id="refreshBtn" class="btn-secondary">刷新</button>
+      </div>
+    </header>
+
+    <!-- HERO BAND -->
+    <section class="hero-band">
+      <h1>Robot Diagnostics</h1>
+      <p class="hero-subtitle">Web diagnostics and control for Supre dual-arm robots.</p>
+    </section>
+
+    <!-- MAIN CONTENT -->
+    <main>
+      <!-- STATUS GRID -->
+      <section class="status-grid" aria-label="诊断状态">
+        <div class="status-card">
+          <span class="status-label">模式</span>
+          <strong class="status-value" id="mode">-</strong>
+        </div>
+        <div class="status-card">
+          <span class="status-label">连接</span>
+          <strong class="status-value connection-value">
+            <span id="connectionDot" class="dot dot-gray"></span>
+            <span id="connected">未连接</span>
+          </strong>
+        </div>
+        <div class="status-card">
+          <span class="status-label">关节数</span>
+          <strong class="status-value" id="jointCount">-</strong>
+        </div>
+        <div class="status-card">
+          <span class="status-label">扭矩</span>
+          <label class="torque-label">
+            <input id="torqueToggle" type="checkbox" checked />
+            <span id="torqueState">已使能</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- GRIPPER TOOLBAR -->
+      <section class="gripper-toolbar" aria-label="夹爪控制">
+        <div class="gripper-group">
+          <button data-gripper-arm="left" data-gripper-action="open" class="btn-primary">左夹爪打开</button>
+          <button data-gripper-arm="left" data-gripper-action="close" class="btn-secondary">左夹爪关闭</button>
+        </div>
+        <span class="toolbar-divider">|</span>
+        <div class="gripper-group">
+          <button data-gripper-arm="right" data-gripper-action="open" class="btn-primary">右夹爪打开</button>
+          <button data-gripper-arm="right" data-gripper-action="close" class="btn-secondary">右夹爪关闭</button>
+        </div>
+      </section>
+
+      <!-- ARM CONTROL CARDS -->
+      <section class="arm-grid" aria-label="关节控制">
+        <div class="arm-card arm-card-left">
+          <h2 class="arm-title">Left Arm</h2>
+          <div id="leftArmControls" class="joint-list"></div>
+        </div>
+        <div class="arm-card arm-card-right">
+          <h2 class="arm-title">Right Arm</h2>
+          <div id="rightArmControls" class="joint-list"></div>
+        </div>
+      </section>
+
+      <!-- STATUS MESSAGE -->
+      <div id="message" class="message" role="status"></div>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
