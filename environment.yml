@@ -1,0 +1,13 @@
+name: supre-robot-play
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - fastapi>=0.136
+      - uvicorn>=0.46
+      - httpx>=0.28
+      - pytest>=9.0
+      - -e .
+      - -e ../supre_robot_sdk

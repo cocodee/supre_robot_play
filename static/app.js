@@ -7,15 +7,19 @@ const state = {
 };
 
 const controls = document.getElementById("jointControls");
-const message = document.getElementById("message");
-const torqueToggle = document.getElementById("torqueToggle");
+let message = null;
+let torqueToggle = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
-  const payload = await response.json();
+  const text = await response.text();
+  if (!text) {
+    throw new Error(`HTTP ${response.status}: empty response`);
+  }
+  const payload = JSON.parse(text);
   if (!response.ok) {
     throw new Error(payload.error || `HTTP ${response.status}`);
   }
@@ -27,6 +31,7 @@ function post(path, body = {}) {
 }
 
 function setMessage(text, isError = false) {
+  if (!message) return;
   message.textContent = text;
   message.classList.toggle("error", isError);
 }
@@ -61,6 +66,7 @@ function format(value, digits = 2) {
 
 function renderArmControl(containerId, jointNames) {
   const container = document.getElementById(containerId);
+  if (!container) return;
   const active = document.activeElement;
   const activeJoint = active?.dataset?.joint;
 
@@ -164,50 +170,53 @@ async function sendJoint(joint, value) {
   }
 }
 
-document.getElementById("connectBtn").addEventListener("click", async () => {
-  try {
-    render(await post("/api/connect"));
-    setMessage("机器人已连接");
-  } catch (error) {
-    setMessage(error.message, true);
-  }
-});
+document.addEventListener("DOMContentLoaded", () => {
+  message = document.getElementById("message");
+  torqueToggle = document.getElementById("torqueToggle");
 
-document.getElementById("disconnectBtn").addEventListener("click", async () => {
-  try {
-    render(await post("/api/disconnect"));
-    setMessage("机器人已断开");
-  } catch (error) {
-    setMessage(error.message, true);
-  }
-});
-
-document.getElementById("refreshBtn").addEventListener("click", refresh);
-
-torqueToggle.addEventListener("change", async () => {
-  try {
-    render(await post("/api/torque", { enabled: torqueToggle.checked }));
-    setMessage(torqueToggle.checked ? "扭矩已使能" : "扭矩已关闭");
-  } catch (error) {
-    setMessage(error.message, true);
-  }
-});
-
-document.querySelectorAll("[data-gripper-arm]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  document.getElementById("connectBtn").addEventListener("click", async () => {
     try {
-      render(await post("/api/gripper", {
-        arm: button.dataset.gripperArm,
-        action: button.dataset.gripperAction,
-      }));
-      setMessage("夹爪命令已发送");
+      render(await post("/api/connect"));
+      setMessage("机器人已连接");
     } catch (error) {
       setMessage(error.message, true);
     }
   });
-});
 
-document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("disconnectBtn").addEventListener("click", async () => {
+    try {
+      render(await post("/api/disconnect"));
+      setMessage("机器人已断开");
+    } catch (error) {
+      setMessage(error.message, true);
+    }
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", refresh);
+
+  torqueToggle.addEventListener("change", async () => {
+    try {
+      render(await post("/api/torque", { enabled: torqueToggle.checked }));
+      setMessage(torqueToggle.checked ? "扭矩已使能" : "扭矩已关闭");
+    } catch (error) {
+      setMessage(error.message, true);
+    }
+  });
+
+  document.querySelectorAll("[data-gripper-arm]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        render(await post("/api/gripper", {
+          arm: button.dataset.gripperArm,
+          action: button.dataset.gripperAction,
+        }));
+        setMessage("夹爪命令已发送");
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    });
+  });
+
   refresh();
   setInterval(refresh, 2000);
 });
