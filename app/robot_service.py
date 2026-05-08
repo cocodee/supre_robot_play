@@ -180,7 +180,12 @@ class SdkRobotBackend:
         return self._torque_enabled
 
     def connect(self) -> None:
-        self._robot.connect()
+        try:
+            self._robot.connect()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            raise RobotServiceError(f"SDK connect failed: {exc}", status=500) from exc
 
     def disconnect(self) -> None:
         self._robot.disconnect()
