@@ -99,7 +99,15 @@ function renderArmControl(containerId, jointNames) {
       const target = metric("目标", format(slider.value, isGripper(joint) ? 2 : 1), "target");
       const force = metric("力", format(state.forces[joint], 2));
 
-      row.append(name, slider, target, force);
+      const resetBtn = document.createElement("button");
+      resetBtn.className = "reset-btn";
+      resetBtn.textContent = "⏺";
+      resetBtn.title = "复位到 0";
+      resetBtn.addEventListener("click", async () => {
+        await sendJoint(joint, 0, motionDuration);
+      });
+
+      row.append(name, slider, target, force, resetBtn);
       if (joint === activeJoint) {
         requestAnimationFrame(() => row.querySelector("input")?.focus());
       }
@@ -217,6 +225,28 @@ document.addEventListener("DOMContentLoaded", () => {
           action: button.dataset.gripperAction,
         }));
         setMessage("夹爪命令已发送");
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    });
+  });
+
+  document.querySelectorAll(".reset-all-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const arm = button.dataset.resetArm;
+      const joints = arm === "left" ? LEFT_ARM_JOINTS : RIGHT_ARM_JOINTS;
+      setMessage("复位中...");
+      for (const joint of joints) {
+        try {
+          await post("/api/joint", { joint, value: 0, duration: motionDuration });
+        } catch (error) {
+          setMessage(error.message, true);
+          return;
+        }
+      }
+      try {
+        render(await api("/api/diagnostics"));
+        setMessage("所有关节已复位");
       } catch (error) {
         setMessage(error.message, true);
       }

@@ -77,11 +77,17 @@
       <!-- ARM CONTROL CARDS -->
       <section class="arm-grid" aria-label="关节控制">
         <div class="arm-card arm-card-left">
-          <h2 class="arm-title">Left Arm</h2>
+          <div class="arm-header">
+            <h2 class="arm-title">Left Arm</h2>
+            <button class="reset-all-btn" data-reset-arm="left">Reset All</button>
+          </div>
           <div id="leftArmControls" class="joint-list"></div>
         </div>
         <div class="arm-card arm-card-right">
-          <h2 class="arm-title">Right Arm</h2>
+          <div class="arm-header">
+            <h2 class="arm-title">Right Arm</h2>
+            <button class="reset-all-btn" data-reset-arm="right">Reset All</button>
+          </div>
           <div id="rightArmControls" class="joint-list"></div>
         </div>
       </section>
