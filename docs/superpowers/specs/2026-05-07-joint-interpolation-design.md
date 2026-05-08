@@ -13,7 +13,13 @@
 在 gripper toolbar 下方、arm grid 上方插入一行 duration 控制：
 
 ```
-[ 运动时长: [1.0] 秒 ]      ← number input，右侧单位标签
+<!-- 插入位置: 在 <section class="gripper-toolbar"> 之后，
+     <section class="arm-grid"> 之前 -->
+<div class="duration-control">
+  <label>运动时长</label>
+  <input type="number" id="durationInput" min="0.1" max="5.0" step="0.1" value="1.0" />
+  <span>秒</span>
+</div>
 ```
 
 - `min=0.1`, `max=5.0`, `step=0.1`, `default=1.0`
@@ -25,10 +31,15 @@
 ### Motion Flow
 1. 用户拖动关节滑块，滑块实时更新目标值预览（数值变化）
 2. 用户**松开**滑块，触发 `change` 事件
-3. JS 发送 `POST /api/joint { joint, value, duration }`
-4. 后端调用 SDK `execute_trajectory` 执行插值运动
-5. 插值期间（duration 秒）：所有控件**保持可用**，可继续拖动其他关节
-6. 插值完成后，状态自动刷新
+3. JS 发送 `POST /api/joint { joint, value, duration }`（**异步 HTTP 请求，不阻塞 UI**）
+4. 后端调用 SDK `execute_trajectory` 执行插值运动（**阻塞调用**）
+5. 阻塞期间：前端 UI 保持响应，用户可继续操作其他控件
+6. 阻塞解除后，HTTP 响应返回最新状态，JS 调用 `render()` 更新界面
+
+### Blocking Semantics
+- API 层是**同步阻塞**：HTTP 请求等待插值完成才返回
+- 前端 JS 是**异步非阻塞**：用户感觉控件一直可用，但同一关节的下一个运动命令会打断当前插值
+- 若同一关节在插值期间收到新命令，旧插值被新目标替换（不等旧插值完成）
 
 ### Backend Behavior
 - `duration` 为**建议时长**，SDK 按控制频率分步执行线性插值
@@ -36,9 +47,14 @@
 - SDK `execute_trajectory` 内部已实现线性插值（见 `supre_robot_sdk/core/robot.py:109`）
 
 ### Simulated Backend
-- `SimulatedRobot.move_joint` 不支持插值（跳过）
-- 新增 `SimulatedRobot.execute_joint_trajectory`：在内存中模拟插值，将目标位置分 N 步写入 `_positions`，每步 `duration/N` 秒后更新
-- 插值期间仍可响应其他关节操作（各自独立 timing）
+- `SimulatedRobot.execute_joint_trajectory`：在内存中模拟插值
+- 步数计算：`steps = max(3, int(30 * duration))`（固定 30Hz 采样率）
+- 每步 `duration / steps` 秒后更新 `_positions`
+- **同步阻塞**实现（`time.sleep`），与 SDK 行为一致
+
+### Status Refresh
+- 插值完成后，HTTP 响应包含最新 positions，JS 直接 render 无需额外轮询
+- 现有的 2 秒定期 `refresh()` 轮询在插值期间**被中断**不影响正确性（下次轮询会拿到最新状态）
 
 ## 5. Component Inventory
 
@@ -92,7 +108,7 @@ def execute_joint_trajectory(self, joint_name: str, target: float, duration: flo
     if clamped == self._positions.get(joint_name):
         return
     start = self._positions[joint_name]
-    steps = max(3, int(self._control_frequency * duration))
+    steps = max(3, int(30 * duration))  # 固定 30Hz 采样率
     for i in range(1, steps + 1):
         alpha = i / steps
         self._positions[joint_name] = start + alpha * (clamped - start)
@@ -111,13 +127,7 @@ def set_joint(self, joint: str, value: float, duration: float = 1.0) -> dict[str
 ### Frontend Changes
 
 **HTML: `static/index.html`**
-```html
-<div class="duration-control">
-  <label>运动时长</label>
-  <input type="number" id="durationInput" min="0.1" max="5.0" step="0.1" value="1.0" />
-  <span>秒</span>
-</div>
-```
+（已在上方 Section 3 给出，位于 gripper toolbar 之后、arm grid 之前）
 
 **CSS: `static/styles.css`**
 ```css
