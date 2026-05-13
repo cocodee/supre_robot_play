@@ -258,7 +258,7 @@ function emptyHardwareCheckResult(text) {
 }
 
 document.addEventListener("click", (event) => {
-  const button = event.target.closest("#hardwareCheckBtn");
+  const button = event.target instanceof Element ? event.target.closest("#hardwareCheckBtn") : null;
   if (!button) return;
   event.preventDefault();
   runHardwareCheck();
@@ -282,6 +282,8 @@ async function runHardwareCheck() {
     button.textContent = "开始检测";
   }
 }
+
+window.runHardwareCheck = runHardwareCheck;
 
 async function refresh() {
   try {

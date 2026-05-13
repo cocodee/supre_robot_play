@@ -66,6 +66,8 @@ class HttpApiTest(unittest.TestCase):
         self.assertIn("arm-card-right", body)
         self.assertIn("hardwareCheckBtn", body)
         self.assertIn('id="hardwareCheckBtn" type="button"', body)
+        self.assertIn('onclick="runHardwareCheck()"', body)
+        self.assertIn("/app.js?v=hardware-check-20260513", body)
         self.assertIn("hardwareCheckResults", body)
 
     def test_joint_api_with_duration(self):
