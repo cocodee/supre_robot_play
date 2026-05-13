@@ -11,6 +11,8 @@ let motionDuration = 1.0;
 let message = null;
 let torqueToggle = null;
 let hardwareCheckBtn = null;
+let connectBtn = null;
+let disconnectBtn = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -136,6 +138,7 @@ function render(data) {
     dot.className = "dot dot-gray";
     connectedEl.textContent = "未连接";
   }
+  updateConnectionActions();
 
   // Torque
   torqueToggle.checked = Boolean(data.torque_enabled);
@@ -148,6 +151,14 @@ function render(data) {
 function renderJoints() {
   renderArmControl("leftArmControls", LEFT_ARM_JOINTS);
   renderArmControl("rightArmControls", RIGHT_ARM_JOINTS);
+}
+
+function updateConnectionActions() {
+  if (!connectBtn || !disconnectBtn) return;
+  connectBtn.disabled = state.connected;
+  disconnectBtn.disabled = !state.connected;
+  connectBtn.classList.toggle("is-active-state", !state.connected);
+  disconnectBtn.classList.toggle("is-active-state", state.connected);
 }
 
 function metric(label, value, role) {
@@ -307,13 +318,16 @@ document.addEventListener("DOMContentLoaded", () => {
   message = document.getElementById("message");
   torqueToggle = document.getElementById("torqueToggle");
   hardwareCheckBtn = document.getElementById("hardwareCheckBtn");
+  connectBtn = document.getElementById("connectBtn");
+  disconnectBtn = document.getElementById("disconnectBtn");
+  updateConnectionActions();
 
   const durationInput = document.getElementById("durationInput");
   durationInput.addEventListener("change", () => {
     motionDuration = Math.min(Math.max(parseFloat(durationInput.value) || 1.0, 0.1), 60);
   });
 
-  document.getElementById("connectBtn").addEventListener("click", async () => {
+  connectBtn.addEventListener("click", async () => {
     try {
       render(await post("/api/connect"));
       setMessage("机器人已连接");
@@ -322,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("disconnectBtn").addEventListener("click", async () => {
+  disconnectBtn.addEventListener("click", async () => {
     try {
       render(await post("/api/disconnect"));
       setMessage("机器人已断开");

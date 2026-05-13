@@ -7,11 +7,16 @@ class FakeSdkRobotWithHardwareCheck:
     def __init__(self):
         self.is_connected = False
         self.connected_count = 0
+        self.disconnected_count = 0
         self.checked_modes = []
 
     def connect(self):
         self.is_connected = True
         self.connected_count += 1
+
+    def disconnect(self):
+        self.is_connected = False
+        self.disconnected_count += 1
 
     def hardware_check(self, mode):
         self.checked_modes.append(mode)
@@ -97,11 +102,26 @@ class RobotServiceTest(unittest.TestCase):
         data = backend.hardware_check("activate")
 
         self.assertEqual(backend._robot.connected_count, 1)
+        self.assertEqual(backend._robot.disconnected_count, 1)
         self.assertEqual(backend._robot.checked_modes, ["activate"])
         self.assertTrue(data["ok"])
         self.assertEqual(data["mode"], "activate")
         self.assertEqual(data["backend"], "sdk")
         self.assertEqual(data["config_path"], "/tmp/robot_config.yaml")
+        self.assertTrue(data["deactivated_after_check"])
+
+    def test_sdk_backend_keeps_existing_connection_after_activate_check(self):
+        backend = SdkRobotBackend.__new__(SdkRobotBackend)
+        backend._robot = FakeSdkRobotWithHardwareCheck()
+        backend._robot.is_connected = True
+        backend._config_path = "/tmp/robot_config.yaml"
+
+        data = backend.hardware_check("activate")
+
+        self.assertEqual(backend._robot.connected_count, 0)
+        self.assertEqual(backend._robot.disconnected_count, 0)
+        self.assertTrue(backend._robot.is_connected)
+        self.assertFalse(data["deactivated_after_check"])
 
 
 if __name__ == "__main__":

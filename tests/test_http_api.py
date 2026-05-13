@@ -69,6 +69,9 @@ class HttpApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Supre Robot Play", body)
+        self.assertIn('id="connectBtn" type="button"', body)
+        self.assertIn('id="disconnectBtn" type="button"', body)
+        self.assertIn("disabled>断开</button>", body)
         self.assertIn("leftArmControls", body)
         self.assertIn("rightArmControls", body)
         self.assertIn("arm-card-left", body)
@@ -76,7 +79,7 @@ class HttpApiTest(unittest.TestCase):
         self.assertIn("hardwareCheckBtn", body)
         self.assertIn('id="hardwareCheckBtn" type="button"', body)
         self.assertIn('onclick="runHardwareCheck()"', body)
-        self.assertIn("/app.js?v=hardware-check-20260513", body)
+        self.assertIn("/app.js?v=hardware-check-20260513b", body)
         self.assertIn("hardwareCheckResults", body)
 
     def test_joint_api_with_duration(self):
