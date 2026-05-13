@@ -248,9 +248,18 @@ class SdkRobotBackend:
     def hardware_check(self, mode: str) -> dict[str, object]:
         if mode == "activate" and not self._robot.is_connected:
             self._robot.connect()
-        if not hasattr(self._robot, "diagnose_hardware"):
-            raise RobotServiceError("Current supre_robot_sdk does not provide diagnose_hardware().", status=500)
-        diagnostics = self._robot.diagnose_hardware()
+        if hasattr(self._robot, "hardware_check"):
+            try:
+                diagnostics = self._robot.hardware_check(mode)
+            except TypeError:
+                diagnostics = self._robot.hardware_check()
+        elif hasattr(self._robot, "diagnose_hardware"):
+            diagnostics = self._robot.diagnose_hardware()
+        else:
+            raise RobotServiceError(
+                "Current supre_robot_sdk does not provide hardware_check() or diagnose_hardware().",
+                status=500,
+            )
         diagnostics["mode"] = mode
         diagnostics["backend"] = "sdk"
         diagnostics["config_path"] = self._config_path

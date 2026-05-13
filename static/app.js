@@ -257,11 +257,20 @@ function emptyHardwareCheckResult(text) {
   return node;
 }
 
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("#hardwareCheckBtn");
+  if (!button) return;
+  event.preventDefault();
+  runHardwareCheck();
+});
+
 async function runHardwareCheck() {
+  const button = hardwareCheckBtn || document.getElementById("hardwareCheckBtn");
+  if (!button || button.disabled) return;
   const mode = selectedHardwareCheckMode();
   try {
-    hardwareCheckBtn.disabled = true;
-    hardwareCheckBtn.textContent = "检测中";
+    button.disabled = true;
+    button.textContent = "检测中";
     setMessage(mode === "activate" ? "正在执行 activate 诊断..." : "正在执行非 activate 诊断...");
     const result = await api(`/api/hardware-check?mode=${encodeURIComponent(mode)}`);
     renderHardwareCheck(result);
@@ -269,8 +278,8 @@ async function runHardwareCheck() {
   } catch (error) {
     setMessage(error.message, true);
   } finally {
-    hardwareCheckBtn.disabled = false;
-    hardwareCheckBtn.textContent = "开始检测";
+    button.disabled = false;
+    button.textContent = "开始检测";
   }
 }
 
@@ -321,7 +330,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("refreshBtn").addEventListener("click", refresh);
-  hardwareCheckBtn.addEventListener("click", runHardwareCheck);
 
   torqueToggle.addEventListener("change", async () => {
     try {

@@ -1,6 +1,29 @@
 import unittest
 
-from app.robot_service import RobotService, RobotServiceError, SimulatedRobot
+from app.robot_service import RobotService, RobotServiceError, SdkRobotBackend, SimulatedRobot
+
+
+class FakeSdkRobotWithHardwareCheck:
+    def __init__(self):
+        self.is_connected = False
+        self.connected_count = 0
+        self.checked_modes = []
+
+    def connect(self):
+        self.is_connected = True
+        self.connected_count += 1
+
+    def hardware_check(self, mode):
+        self.checked_modes.append(mode)
+        return {
+            "ok": True,
+            "interfaces": [
+                {
+                    "name": "fake_sdk",
+                    "ok": True,
+                }
+            ],
+        }
 
 
 class RobotServiceTest(unittest.TestCase):
@@ -66,7 +89,20 @@ class RobotServiceTest(unittest.TestCase):
         data = service.set_joint("left_arm_joint_1", 90.0, duration=0)
         self.assertEqual(data["positions"]["left_arm_joint_1"], 90.0)
 
+    def test_sdk_backend_prefers_sdk_hardware_check(self):
+        backend = SdkRobotBackend.__new__(SdkRobotBackend)
+        backend._robot = FakeSdkRobotWithHardwareCheck()
+        backend._config_path = "/tmp/robot_config.yaml"
+
+        data = backend.hardware_check("activate")
+
+        self.assertEqual(backend._robot.connected_count, 1)
+        self.assertEqual(backend._robot.checked_modes, ["activate"])
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["mode"], "activate")
+        self.assertEqual(data["backend"], "sdk")
+        self.assertEqual(data["config_path"], "/tmp/robot_config.yaml")
+
 
 if __name__ == "__main__":
     unittest.main()
-
