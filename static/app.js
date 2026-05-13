@@ -10,6 +10,7 @@ let motionDuration = 1.0;
 
 let message = null;
 let torqueToggle = null;
+let hardwareCheckBtn = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -161,6 +162,118 @@ function metric(label, value, role) {
   return node;
 }
 
+function selectedHardwareCheckMode() {
+  return document.querySelector("input[name='hardwareCheckMode']:checked")?.value || "passive";
+}
+
+function statusLabel(ok) {
+  return ok ? "通过" : "失败";
+}
+
+function statusClass(ok) {
+  return ok ? "check-pass" : "check-fail";
+}
+
+function renderHardwareCheck(data) {
+  const summary = document.getElementById("hardwareCheckSummary");
+  const results = document.getElementById("hardwareCheckResults");
+  if (!summary || !results) return;
+
+  summary.textContent = data.summary || (data.ok ? "硬件检测通过" : "硬件检测发现问题");
+  summary.className = data.ok ? "summary-pass" : "summary-fail";
+
+  const interfaces = Array.isArray(data.interfaces) ? data.interfaces : [];
+  if (!interfaces.length) {
+    results.replaceChildren(emptyHardwareCheckResult("没有可显示的硬件接口结果"));
+    return;
+  }
+
+  results.replaceChildren(
+    ...interfaces.map((item) => {
+      const card = document.createElement("article");
+      card.className = `hardware-result ${statusClass(Boolean(item.ok))}`;
+
+      const header = document.createElement("div");
+      header.className = "hardware-result-header";
+      const title = document.createElement("strong");
+      title.textContent = item.name || item.configured_type || item.type || "unknown";
+      const badge = document.createElement("span");
+      badge.className = "hardware-result-badge";
+      badge.textContent = statusLabel(Boolean(item.ok));
+      header.append(title, badge);
+
+      const type = document.createElement("div");
+      type.className = "hardware-result-type";
+      type.textContent = item.configured_type || item.type || "";
+
+      const messageNode = document.createElement("p");
+      messageNode.textContent = item.message || (item.ok ? "检测通过" : "检测失败");
+
+      card.append(header, type, messageNode);
+      if (item.suggestion) {
+        const suggestion = document.createElement("p");
+        suggestion.className = "hardware-suggestion";
+        suggestion.textContent = item.suggestion;
+        card.append(suggestion);
+      }
+
+      const details = hardwareDetails(item);
+      if (details.length) {
+        const detailList = document.createElement("ul");
+        detailList.className = "hardware-detail-list";
+        details.forEach((detail) => {
+          const li = document.createElement("li");
+          li.textContent = detail;
+          detailList.append(li);
+        });
+        card.append(detailList);
+      }
+      return card;
+    }),
+  );
+}
+
+function hardwareDetails(item) {
+  const details = [];
+  if (Array.isArray(item.events)) {
+    item.events.slice(0, 3).forEach((event) => {
+      const scope = [event.joint_name, event.node_id != null ? `node ${event.node_id}` : ""].filter(Boolean).join(" ");
+      details.push(`${event.stage || "event"}${scope ? ` (${scope})` : ""}: ${event.message || ""}`);
+    });
+  }
+  if (Array.isArray(item.joints)) {
+    item.joints.filter((joint) => joint && joint.ok === false).slice(0, 4).forEach((joint) => {
+      const parts = [joint.joint_name, joint.node_id != null ? `node ${joint.node_id}` : ""].filter(Boolean).join(" ");
+      details.push(`${parts || "joint"}: ${joint.message || "检测失败"}`);
+    });
+  }
+  return details;
+}
+
+function emptyHardwareCheckResult(text) {
+  const node = document.createElement("div");
+  node.className = "hardware-empty";
+  node.textContent = text;
+  return node;
+}
+
+async function runHardwareCheck() {
+  const mode = selectedHardwareCheckMode();
+  try {
+    hardwareCheckBtn.disabled = true;
+    hardwareCheckBtn.textContent = "检测中";
+    setMessage(mode === "activate" ? "正在执行 activate 诊断..." : "正在执行非 activate 诊断...");
+    const result = await api(`/api/hardware-check?mode=${encodeURIComponent(mode)}`);
+    renderHardwareCheck(result);
+    setMessage(result.ok ? "硬件检测通过" : "硬件检测发现问题", !result.ok);
+  } catch (error) {
+    setMessage(error.message, true);
+  } finally {
+    hardwareCheckBtn.disabled = false;
+    hardwareCheckBtn.textContent = "开始检测";
+  }
+}
+
 async function refresh() {
   try {
     render(await api("/api/diagnostics"));
@@ -182,6 +295,7 @@ async function sendJoint(joint, value, duration = 1.0) {
 document.addEventListener("DOMContentLoaded", () => {
   message = document.getElementById("message");
   torqueToggle = document.getElementById("torqueToggle");
+  hardwareCheckBtn = document.getElementById("hardwareCheckBtn");
 
   const durationInput = document.getElementById("durationInput");
   durationInput.addEventListener("change", () => {
@@ -207,6 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("refreshBtn").addEventListener("click", refresh);
+  hardwareCheckBtn.addEventListener("click", runHardwareCheck);
 
   torqueToggle.addEventListener("change", async () => {
     try {
@@ -256,4 +371,3 @@ document.addEventListener("DOMContentLoaded", () => {
   refresh();
   setInterval(refresh, 2000);
 });
-

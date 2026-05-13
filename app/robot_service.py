@@ -69,6 +69,9 @@ class RobotBackend(Protocol):
     def close_gripper(self, arm: str) -> None:
         ...
 
+    def hardware_check(self, mode: str) -> dict[str, object]:
+        ...
+
 
 @dataclass
 class SimulatedRobot:
@@ -133,6 +136,28 @@ class SimulatedRobot:
     def close_gripper(self, arm: str) -> None:
         self.move_joint(gripper_joint_name(arm), 0.0)
 
+    def hardware_check(self, mode: str) -> dict[str, object]:
+        return {
+            "ok": True,
+            "mode": mode,
+            "backend": "sim",
+            "summary": "仿真模式硬件检测通过。",
+            "connected": self.is_connected,
+            "joint_order": self.joint_order,
+            "interfaces": [
+                {
+                    "name": "simulated_robot",
+                    "configured_type": "SimulatedRobot",
+                    "type": "SimulatedRobot",
+                    "ok": True,
+                    "message": "当前运行在仿真模式，没有访问真实硬件。",
+                    "suggestion": None,
+                    "joints": [],
+                    "events": [],
+                }
+            ],
+        }
+
     def execute_joint_trajectory(self, joint_name: str, target: float, duration: float) -> None:
         self._require_connected()
         clamped = clamp_joint_value(joint_name, target)
@@ -154,6 +179,10 @@ class SimulatedRobot:
 
 class SdkRobotBackend:
     def __init__(self, config_path: str, sdk_path: str | None, use_interpolation: bool, control_frequency: float):
+        self._config_path = config_path
+        self._sdk_path = sdk_path
+        self._use_interpolation = use_interpolation
+        self._control_frequency = control_frequency
         if sdk_path:
             src_path = str(Path(sdk_path).resolve() / "src")
             if src_path not in sys.path:
@@ -215,6 +244,18 @@ class SdkRobotBackend:
 
     def close_gripper(self, arm: str) -> None:
         self._robot.close_gripper(arm)
+
+    def hardware_check(self, mode: str) -> dict[str, object]:
+        if mode == "activate" and not self._robot.is_connected:
+            self._robot.connect()
+        if not hasattr(self._robot, "diagnose_hardware"):
+            raise RobotServiceError("Current supre_robot_sdk does not provide diagnose_hardware().", status=500)
+        diagnostics = self._robot.diagnose_hardware()
+        diagnostics["mode"] = mode
+        diagnostics["backend"] = "sdk"
+        diagnostics["config_path"] = self._config_path
+        diagnostics["summary"] = summarize_hardware_check(diagnostics)
+        return diagnostics
 
 
 class RobotServiceError(Exception):
@@ -278,6 +319,21 @@ class RobotService:
             return self._call(lambda: self._backend.close_gripper(arm))
         raise RobotServiceError("action must be 'open' or 'close'")
 
+    def hardware_check(self, mode: str = "passive") -> dict[str, object]:
+        normalized = mode.lower()
+        if normalized not in {"passive", "activate"}:
+            raise RobotServiceError("mode must be 'passive' or 'activate'", status=400)
+        with self._lock:
+            try:
+                result = self._backend.hardware_check(normalized)
+                self._last_error = None if result.get("ok") else str(result.get("summary") or "Hardware check failed")
+                return result
+            except RobotServiceError:
+                raise
+            except Exception as exc:
+                self._last_error = str(exc)
+                raise RobotServiceError(f"Hardware check failed: {exc}", status=500) from exc
+
     def _call(self, operation) -> dict[str, object]:
         with self._lock:
             try:
@@ -309,6 +365,17 @@ def gripper_joint_name(arm: str) -> str:
 
 def backend_mode(backend: RobotBackend) -> str:
     return "sim" if isinstance(backend, SimulatedRobot) else "sdk"
+
+
+def summarize_hardware_check(diagnostics: dict[str, object]) -> str:
+    interfaces = diagnostics.get("interfaces", [])
+    if not isinstance(interfaces, list):
+        return "硬件检测结果格式异常。"
+    failed = [item for item in interfaces if isinstance(item, dict) and not item.get("ok", False)]
+    if not failed:
+        return "硬件检测通过。"
+    names = [str(item.get("name") or item.get("configured_type") or item.get("type") or "unknown") for item in failed]
+    return f"{len(failed)} 个硬件接口检测失败：{', '.join(names)}。"
 
 
 def create_service_from_env() -> RobotService:

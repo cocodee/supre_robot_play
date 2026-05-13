@@ -57,6 +57,10 @@ def create_app(service: RobotService | None = None) -> FastAPI:
     def diagnostics() -> dict[str, object]:
         return robot().diagnostics()
 
+    @app.get("/api/hardware-check")
+    def hardware_check(mode: str = "passive") -> dict[str, object]:
+        return robot().hardware_check(mode)
+
     @app.post("/api/connect")
     def connect() -> dict[str, object]:
         return robot().connect()
@@ -110,4 +114,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

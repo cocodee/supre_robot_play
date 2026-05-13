@@ -74,6 +74,27 @@
         <span>秒</span>
       </div>
 
+      <section class="hardware-check-panel" aria-label="硬件检测">
+        <div class="hardware-check-header">
+          <div>
+            <h2>硬件检测</h2>
+            <p id="hardwareCheckSummary">尚未执行检测</p>
+          </div>
+          <div class="hardware-check-actions">
+            <label class="mode-option">
+              <input type="radio" name="hardwareCheckMode" value="passive" checked />
+              <span>不执行 activate</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="hardwareCheckMode" value="activate" />
+              <span>执行 activate</span>
+            </label>
+            <button id="hardwareCheckBtn" class="btn-primary">开始检测</button>
+          </div>
+        </div>
+        <div id="hardwareCheckResults" class="hardware-check-results"></div>
+      </section>
+
       <!-- ARM CONTROL CARDS -->
       <section class="arm-grid" aria-label="关节控制">
         <div class="arm-card arm-card-left">
