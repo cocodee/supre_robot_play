@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
+import os
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -92,6 +95,19 @@ def create_app(service: RobotService | None = None) -> FastAPI:
             "mode": status["mode"],
             "joint_order": status["joint_order"],
             "joint_count": status["joint_count"],
+        }
+
+    @app.get("/api/runtime")
+    def runtime() -> dict[str, object]:
+        eu_motor_spec = importlib.util.find_spec("eu_motor_py")
+        gripper_spec = importlib.util.find_spec("jodell_gripper_py")
+        return {
+            "python": sys.executable,
+            "python_version": sys.version,
+            "pythonpath": os.getenv("PYTHONPATH"),
+            "sys_path": sys.path,
+            "eu_motor_py": None if eu_motor_spec is None else str(eu_motor_spec.origin),
+            "jodell_gripper_py": None if gripper_spec is None else str(gripper_spec.origin),
         }
 
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

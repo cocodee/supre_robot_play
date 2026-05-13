@@ -54,6 +54,15 @@ class HttpApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("mode must be", response.json()["error"])
 
+    def test_runtime_api(self):
+        response = self.client.get("/api/runtime")
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("python", data)
+        self.assertIn("pythonpath", data)
+        self.assertIn("eu_motor_py", data)
+
     def test_index_page_is_served(self):
         response = self.client.get("/")
         body = response.text
